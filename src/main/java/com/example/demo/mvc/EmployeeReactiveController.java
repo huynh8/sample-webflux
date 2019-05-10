@@ -1,19 +1,34 @@
 package com.example.demo.mvc;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.example.demo.db.Employee;
+import com.example.demo.db.EmployeeRepository;
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/employees")
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class EmployeeReactiveController {
+
+    EmployeeRepository employeeRepository;
+
+    public EmployeeReactiveController(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
 
     @GetMapping
     public Flux<Employee> getAllEmployees() {
-        Employee employee1 = Employee.builder().id("1").name("Bill").build();
-        Employee employee2 = Employee.builder().id("2").name("Ivan").build();
+        return employeeRepository.findAll();
+    }
 
-        return Flux.just(employee1, employee2);
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<Employee> createEmployee(@RequestBody EmployeeRequest employeeRequest) {
+        return employeeRepository.save(Employee.builder().name(employeeRequest.getName()).build());
     }
 }

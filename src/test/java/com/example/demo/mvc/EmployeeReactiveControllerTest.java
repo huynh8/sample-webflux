@@ -1,43 +1,67 @@
 package com.example.demo.mvc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.demo.db.Employee;
+import com.example.demo.db.EmployeeRepository;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.test.web.reactive.server.FluxExchangeResult;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.BodyInserters;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.MockitoAnnotations.initMocks;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
 class EmployeeReactiveControllerTest {
 
     WebTestClient webTestClient;
 
+    @Mock
+    EmployeeRepository employeeRepository;
+
     @BeforeEach
     void setUp() {
-        webTestClient = WebTestClient.bindToController(new EmployeeReactiveController()).build();
+        initMocks(this);
+        webTestClient = WebTestClient.bindToController(new EmployeeReactiveController(employeeRepository)).build();
     }
 
     @Test
-    void getAllEmployees() throws IOException {
-        FluxExchangeResult<Employee> employeeFluxExchangeResult = webTestClient.get().uri("/employees")
+    void getAllEmployees() {
+        String name1 = "Tom";
+        String name2 = "Jerry";
+        Mockito.when(employeeRepository.findAll()).thenReturn(Flux.just(Employee.builder().id(1).name(name1).build(), Employee.builder().id(2).name(name2).build()));
+
+        webTestClient.get().uri("/employees")
                 .exchange()
-                .returnResult(Employee.class);
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$").isArray()
+                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$[0].id").isEqualTo(1)
+                .jsonPath("$[0].name").isEqualTo("Tom")
+                .jsonPath("$[1].id").isEqualTo(2)
+                .jsonPath("$[1].name").isEqualTo("Jerry");
+    }
 
-        assertEquals(HttpStatus.OK, employeeFluxExchangeResult.getStatus());
+    @Test
+    void create() {
+        String name = "Ivan";
+        Mockito.when(employeeRepository.save(any()))
+                .thenReturn(Mono.just(Employee.builder().id(1).name(name).build()));
 
-        ObjectMapper objectMapper = new ObjectMapper();
+        EmployeeRequest employeeRequest = new EmployeeRequest(name);
+        webTestClient.post().uri("/employees")
+                .body(BodyInserters.fromObject(employeeRequest))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody().jsonPath("$.id").isEqualTo(1)
+                .jsonPath("$.name").isEqualTo(name);
 
-        List<Employee> employees = objectMapper.readValue(employeeFluxExchangeResult.getResponseBodyContent(),
-                objectMapper.getTypeFactory().constructCollectionType(List.class, Employee.class));
-
-        assertEquals("1", employees.get(0).getId());
-        assertEquals("Bill", employees.get(0).getName());
+        verify(employeeRepository).save(any());
     }
 }

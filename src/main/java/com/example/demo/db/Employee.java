@@ -1,4 +1,4 @@
-package com.example.demo.mvc;
+package com.example.demo.db;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
@@ -6,17 +6,21 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Value;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 
 @Value
 @Builder
 @JsonDeserialize(builder = Employee.EmployeeBuilder.class)
 @FieldDefaults(level = AccessLevel.PRIVATE)
-class Employee {
-    String id;
+@Table("employees")
+public class Employee {
+    @Id
+    Integer id;
     String name;
 
     @JsonPOJOBuilder(withPrefix = "")
-    static final class EmployeeBuilder {
+    public static final class EmployeeBuilder {
 
     }
 }
